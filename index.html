@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interdimensional Oracle</title>
+    <!-- Import Vue 3 and Tailwind CSS via CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white h-screen flex flex-col items-center p-10 font-sans">
+
+    <div id="app" class="w-full max-w-3xl bg-gray-800 rounded-lg shadow-2xl overflow-hidden flex flex-col h-[800px] max-h-full border border-green-500">
+        
+        <!-- Header -->
+        <div class="bg-gray-950 p-4 border-b border-green-500 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-green-400">🧠 Interdimensional Oracle</h1>
+            <span class="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">Vue.js + FastAPI</span>
+        </div>
+
+        <!-- Chat History -->
+        <div class="flex-1 p-6 overflow-y-auto space-y-6" id="chat-box">
+            <div v-for="(msg, index) in messages" :key="index" 
+                 :class="msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'">
+                
+                <div :class="msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-green-300'" 
+                     class="max-w-xl rounded-lg p-4 shadow-md">
+                    <p class="whitespace-pre-wrap leading-relaxed">{{ msg.text }}</p>
+                    
+                    <!-- Sources (Only show for AI if they exist) -->
+                    <div v-if="msg.role === 'ai' && msg.sources && msg.sources.length > 0" class="mt-3 pt-3 border-t border-gray-600/50">
+                        <p class="text-xs text-gray-400 font-bold mb-1">Sources Cited:</p>
+                        <ul class="text-xs text-gray-400 list-disc list-inside">
+                            <li v-for="source in msg.sources" :key="source">{{ source }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Loading Indicator -->
+            <div v-if="loading" class="flex justify-start">
+                <div class="bg-gray-700 text-gray-400 max-w-xl rounded-lg p-4 shadow-md animate-pulse">
+                    The Oracle is consulting the database...
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="p-4 bg-gray-900 border-t border-gray-700">
+            <form @submit.prevent="sendMessage" class="flex gap-3">
+                <input v-model="userInput" type="text" placeholder="Ask about characters (e.g., 'Who is Morty Smith?')..." 
+                       class="flex-1 bg-gray-800 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 border border-gray-700 placeholder-gray-500"
+                       :disabled="loading">
+                <button type="submit" 
+                        class="bg-green-600 hover:bg-green-500 text-white px-8 py-3 rounded-lg font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        :disabled="loading || !userInput.trim()">
+                    Send
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    userInput: '',
+                    messages: [
+                        { role: 'ai', text: 'Wubba Lubba Dub Dub! I am the Interdimensional Oracle. Ask me about anyone in the database.', sources: [] }
+                    ],
+                    loading: false
+                }
+            },
+            methods: {
+                async sendMessage() {
+                    if (!this.userInput.trim()) return;
+                    
+                    const query = this.userInput;
+                    this.messages.push({ role: 'user', text: query });
+                    this.userInput = '';
+                    this.loading = true;
+                    
+                    this.scrollToBottom();
+
+                    try {
+                        const response = await fetch('/api/chat', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ message: query })
+                        });
+                        
+                        const data = await response.json();
+                        this.messages.push({ 
+                            role: 'ai', 
+                            text: data.response,
+                            sources: data.sources 
+                        });
+                    } catch (error) {
+                        this.messages.push({ role: 'ai', text: 'Error connecting to the multiversal network.', sources: [] });
+                    } finally {
+                        this.loading = false;
+                        this.scrollToBottom();
+                    }
+                },
+                scrollToBottom() {
+                    this.$nextTick(() => {
+                        const box = document.getElementById('chat-box');
+                        box.scrollTop = box.scrollHeight;
+                    });
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
