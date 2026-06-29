@@ -2,7 +2,7 @@
 
 A web-based AI chat agent that answers questions about the Rick and Morty universe using true data from the official API. It uses a local vector database and Retrieval-Augmented Generation (RAG) to prevent the AI from hallucinating or making up answers.
 
-## ⚙️ How to Run Locally
+# ⚙️ How to Run Locally
 
 **1. Clone the repository:**
 ```bash
@@ -10,7 +10,7 @@ git clone <your-repo-link>
 cd Assist_Digital_Project
 
 
-2. Create a virtual environment:
+**2. Create a virtual environment:**
 
 Bash
 # Windows
