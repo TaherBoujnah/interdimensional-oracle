@@ -35,83 +35,111 @@
     </style>
 </head>
 <body class="h-screen flex flex-col font-sans overflow-hidden">
-    <div id="app" class="flex flex-col h-full max-w-4xl mx-auto w-full bg-slate-900 portal-shadow border-x border-slate-700">
+    <div id="app" class="flex flex-col h-full max-w-7xl mx-auto w-full bg-slate-900 portal-shadow border-x border-slate-700">
         
-        <header class="bg-slate-950 portal-border-b border-b-2 border-green-500 p-4 flex justify-between items-center z-10 shadow-lg">
+        <header class="bg-slate-950 portal-border-b border-b-2 border-green-500 p-4 flex justify-between items-center z-20 shadow-lg">
             <div>
                 <h1 class="text-2xl font-black text-portal tracking-wider uppercase">The Multiversal Oracle</h1>
-                <p class="text-sm text-green-200 opacity-80">Powered by Mr. Poopybutthole</p>
+                <p class="text-sm text-green-200 opacity-80">Powered by RAG & Mr. Poopybutthole</p>
             </div>
             <div class="text-4xl animate-pulse">🛸</div>
         </header>
 
-        <main class="flex-1 overflow-y-auto p-4 custom-scrollbar relative" id="chat-container">
-            <div v-if="messages.length === 0" class="text-center text-slate-400 mt-20 flex flex-col items-center">
-                <div class="text-6xl mb-4">🌀</div>
-                <p class="text-xl mb-2 font-bold text-slate-300">Ooo-wee! Ask me anything about the Universe!</p>
-                <p class="text-sm bg-slate-800 px-4 py-2 rounded-lg portal-border mt-4">Try: "Who is Rick Sanchez?" or "When did the Pilot air?"</p>
+        <div class="flex flex-1 overflow-hidden relative">
+            
+            <div class="flex flex-col flex-1 border-r border-slate-700">
+                <main class="flex-1 overflow-y-auto p-4 custom-scrollbar relative" id="chat-container">
+                    <div v-if="messages.length === 0" class="text-center text-slate-400 mt-20 flex flex-col items-center">
+                        <div class="text-6xl mb-4">🌀</div>
+                        <p class="text-xl mb-2 font-bold text-slate-300">Ooo-wee! Ask me anything about the Universe!</p>
+                        <p class="text-sm bg-slate-800 px-4 py-2 rounded-lg portal-border mt-4">Try: "Who is Rick Sanchez?" or "When did the Pilot air?"</p>
+                    </div>
+
+                    <div v-for="(msg, index) in messages" :key="index" class="mb-6 flex flex-col" :class="msg.role === 'user' ? 'items-end' : 'items-start'">
+                        
+                        <div :class="msg.role === 'user' ? 'bg-blue-600 text-white border border-blue-400' : 'bg-slate-800 text-slate-200 portal-border'" 
+                             class="px-5 py-4 rounded-xl max-w-[85%] shadow-lg">
+                            <p class="whitespace-pre-wrap leading-relaxed">{{ msg.content }}</p>
+                            
+                            <div v-if="msg.role === 'ai' && msg.sources && msg.sources.length > 0" class="mt-4 pt-3 border-t border-slate-600">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Database Matches:</span>
+                                    <span class="text-xs px-2 py-1 rounded font-bold" 
+                                          :class="msg.sources.length >= 2 ? 'bg-green-900 text-green-400 border border-green-500' : 'bg-yellow-900 text-yellow-400 border border-yellow-500'">
+                                        {{ msg.sources.length >= 2 ? 'High Confidence' : 'Medium Confidence' }} ({{ msg.sources.length }} sources)
+                                    </span>
+                                </div>
+                                <ul class="text-xs text-slate-400 list-disc pl-5 marker:text-green-500">
+                                    <li v-for="source in msg.sources" :key="source" class="mb-1">{{ source }}</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div v-if="msg.role === 'ai' && !isStreaming" class="flex gap-4 mt-2 ml-2 bg-slate-950/50 px-3 py-1.5 rounded-full border border-slate-800">
+                            <button @click="sendFeedback(msg, true, index)" v-if="msg.feedback === undefined" class="text-xs font-bold text-slate-400 hover:text-green-400 transition-colors">
+                                👍 HELPFUL
+                            </button>
+                            <button @click="sendFeedback(msg, false, index)" v-if="msg.feedback === undefined" class="text-xs font-bold text-slate-400 hover:text-red-400 transition-colors">
+                                👎 NOT HELPFUL
+                            </button>
+                            <span v-if="msg.feedback === true" class="text-xs text-green-400 font-bold">✓ Logged: Helpful</span>
+                            <span v-if="msg.feedback === false" class="text-xs text-red-400 font-bold">✓ Logged: Not Helpful</span>
+                        </div>
+                    </div>
+                </main>
+
+                <footer class="p-4 bg-slate-950 border-t border-green-500 relative z-10">
+                    <form @submit.prevent="sendMessage" class="flex gap-3">
+                        <input 
+                            v-model="userInput" 
+                            type="text" 
+                            placeholder="Enter query here, Jerry..." 
+                            class="flex-1 bg-slate-800 text-slate-200 px-4 py-3 border border-slate-600 rounded-lg focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 placeholder-slate-500"
+                            :disabled="isStreaming"
+                        >
+                        <button 
+                            type="submit" 
+                            class="bg-green-500 hover:bg-green-400 text-slate-950 px-8 py-3 rounded-lg font-black tracking-widest transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            :disabled="isStreaming || !userInput.trim()"
+                        >
+                            SEND
+                        </button>
+                    </form>
+                </footer>
             </div>
 
-            <div v-for="(msg, index) in messages" :key="index" class="mb-6 flex flex-col" :class="msg.role === 'user' ? 'items-end' : 'items-start'">
-                
-                <div :class="msg.role === 'user' ? 'bg-blue-600 text-white border border-blue-400' : 'bg-slate-800 text-slate-200 portal-border'" 
-                     class="px-5 py-4 rounded-xl max-w-[85%] shadow-lg">
-                    <p class="whitespace-pre-wrap leading-relaxed">{{ msg.content }}</p>
+            <aside class="w-1/3 bg-slate-900 flex flex-col hidden md:flex border-l border-slate-800">
+                <div class="p-4 border-b border-slate-700 bg-slate-950">
+                    <h2 class="text-lg font-bold text-portal tracking-widest mb-3">MULTIVERSE BROWSER</h2>
                     
-                    <div v-if="msg.role === 'ai' && msg.sources && msg.sources.length > 0" class="mt-4 pt-3 border-t border-slate-600">
-                        <div class="flex items-center gap-3 mb-2">
-                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Database Matches:</span>
-                            <span class="text-xs px-2 py-1 rounded font-bold" 
-                                  :class="msg.sources.length >= 2 ? 'bg-green-900 text-green-400 border border-green-500' : 'bg-yellow-900 text-yellow-400 border border-yellow-500'">
-                                {{ msg.sources.length >= 2 ? 'High Confidence' : 'Medium Confidence' }} ({{ msg.sources.length }} sources)
-                            </span>
-                        </div>
-                        <ul class="text-xs text-slate-400 list-disc pl-5 marker:text-green-500">
-                            <li v-for="source in msg.sources" :key="source" class="mb-1">{{ source }}</li>
-                        </ul>
+                    <div class="flex gap-2 mb-3">
+                        <button @click="browseType = 'characters'" :class="browseType === 'characters' ? 'bg-green-500 text-slate-900' : 'bg-slate-800 text-green-400'" class="flex-1 py-1.5 rounded text-xs font-bold border border-green-500 transition-colors">Characters</button>
+                        <button @click="browseType = 'episodes'" :class="browseType === 'episodes' ? 'bg-green-500 text-slate-900' : 'bg-slate-800 text-green-400'" class="flex-1 py-1.5 rounded text-xs font-bold border border-green-500 transition-colors">Episodes</button>
+                        <button @click="browseType = 'locations'" :class="browseType === 'locations' ? 'bg-green-500 text-slate-900' : 'bg-slate-800 text-green-400'" class="flex-1 py-1.5 rounded text-xs font-bold border border-green-500 transition-colors">Locations</button>
+                    </div>
+
+                    <input 
+                        v-model="browseSearch" 
+                        type="text" 
+                        placeholder="Search current category..." 
+                        class="w-full bg-slate-800 text-slate-200 px-3 py-2 border border-slate-600 rounded focus:outline-none focus:border-green-500 text-sm placeholder-slate-500"
+                    >
+                </div>
+                
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-3">
+                    <div v-if="filteredBrowseData.length === 0" class="text-slate-500 text-sm text-center mt-4">
+                        No data matches your search.
+                    </div>
+                    <div v-for="item in filteredBrowseData" :key="item.id" class="bg-slate-800 border border-slate-700 p-3 rounded mb-2 hover:border-green-500 transition-colors">
+                        <div class="font-bold text-slate-200">{{ item.name }}</div>
+                        <div v-if="browseType === 'characters'" class="text-xs text-slate-400 mt-1 capitalize">{{ item.species }} • {{ item.status }}</div>
+                        <div v-if="browseType === 'episodes'" class="text-xs text-slate-400 mt-1">{{ item.episode }} • Aired: {{ item.air_date }}</div>
+                        <div v-if="browseType === 'locations'" class="text-xs text-slate-400 mt-1">{{ item.type }} • {{ item.dimension }}</div>
                     </div>
                 </div>
-
-                <div v-if="msg.role === 'ai'" class="flex gap-4 mt-2 ml-2 bg-slate-950/50 px-3 py-1.5 rounded-full border border-slate-800">
-                    <button @click="sendFeedback(msg, true, index)" v-if="msg.feedback === undefined" class="text-xs font-bold text-slate-400 hover:text-green-400 transition-colors">
-                        👍 HELPFUL
-                    </button>
-                    <button @click="sendFeedback(msg, false, index)" v-if="msg.feedback === undefined" class="text-xs font-bold text-slate-400 hover:text-red-400 transition-colors">
-                        👎 NOT HELPFUL
-                    </button>
-                    <span v-if="msg.feedback === true" class="text-xs text-green-400 font-bold">✓ Logged: Helpful</span>
-                    <span v-if="msg.feedback === false" class="text-xs text-red-400 font-bold">✓ Logged: Not Helpful</span>
-                </div>
-            </div>
+            </aside>
             
-            <div v-if="isLoading" class="flex items-start mb-6">
-                <div class="bg-slate-800 portal-border px-5 py-4 rounded-xl shadow-lg flex items-center gap-2">
-                    <div class="text-sm font-bold text-green-400 mr-2">SEARCHING MULTIVERSE</div>
-                    <div class="w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
-                    <div class="w-2 h-2 bg-green-400 rounded-full animate-ping" style="animation-delay: 0.2s"></div>
-                    <div class="w-2 h-2 bg-green-400 rounded-full animate-ping" style="animation-delay: 0.4s"></div>
-                </div>
-            </div>
-        </main>
-
-        <footer class="p-4 bg-slate-950 border-t border-green-500 relative z-10">
-            <form @submit.prevent="sendMessage" class="flex gap-3">
-                <input 
-                    v-model="userInput" 
-                    type="text" 
-                    placeholder="Enter query here, Jerry..." 
-                    class="flex-1 bg-slate-800 text-slate-200 px-4 py-3 border border-slate-600 rounded-lg focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 placeholder-slate-500"
-                    :disabled="isLoading"
-                >
-                <button 
-                    type="submit" 
-                    class="bg-green-500 hover:bg-green-400 text-slate-950 px-8 py-3 rounded-lg font-black tracking-widest transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    :disabled="isLoading || !userInput.trim()"
-                >
-                    SEND
-                </button>
-            </form>
-        </footer>
+        </div>
     </div>
 
     <script>
@@ -122,18 +150,43 @@
                 return {
                     userInput: '',
                     messages: [],
-                    isLoading: false
+                    isStreaming: false,
+                    rawBrowseData: { characters: [], episodes: [], locations: [] },
+                    browseType: 'characters',
+                    browseSearch: ''
                 }
             },
+            computed: {
+                filteredBrowseData() {
+                    const dataList = this.rawBrowseData[this.browseType] || [];
+                    const search = this.browseSearch.toLowerCase();
+                    if (!search) return dataList;
+                    return dataList.filter(item => item.name && item.name.toLowerCase().includes(search));
+                }
+            },
+            mounted() {
+                this.fetchBrowseData();
+            },
             methods: {
+                async fetchBrowseData() {
+                    try {
+                        const response = await fetch('/api/data');
+                        const data = await response.json();
+                        this.rawBrowseData = data;
+                    } catch (error) {
+                        console.error(error);
+                    }
+                },
                 async sendMessage() {
                     if (!this.userInput.trim()) return;
 
                     const query = this.userInput;
                     this.messages.push({ role: 'user', content: query });
                     this.userInput = '';
-                    this.isLoading = true;
+                    this.isStreaming = true;
 
+                    const aiMsg = { role: 'ai', content: '', sources: [], feedback: undefined };
+                    this.messages.push(aiMsg);
                     this.scrollToBottom();
 
                     try {
@@ -143,22 +196,30 @@
                             body: JSON.stringify({ message: query })
                         });
 
-                        const data = await response.json();
-                        
-                        this.messages.push({ 
-                            role: 'ai', 
-                            content: data.response,
-                            sources: data.sources,
-                            feedback: undefined
-                        });
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder('utf-8');
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+
+                            const chunkStr = decoder.decode(value, { stream: true });
+                            const lines = chunkStr.split('\n').filter(line => line.trim() !== '');
+
+                            for (let line of lines) {
+                                const parsed = JSON.parse(line);
+                                if (parsed.type === 'sources') {
+                                    aiMsg.sources = parsed.data;
+                                } else if (parsed.type === 'chunk') {
+                                    aiMsg.content += parsed.data;
+                                    this.scrollToBottom();
+                                }
+                            }
+                        }
                     } catch (error) {
-                        this.messages.push({ 
-                            role: 'ai', 
-                            content: 'Uh oh! The portal connection dropped! I can\'t reach the server!',
-                            sources: []
-                        });
+                        aiMsg.content = 'Uh oh! The portal connection dropped! I can\'t reach the server!';
                     } finally {
-                        this.isLoading = false;
+                        this.isStreaming = false;
                         this.scrollToBottom();
                     }
                 },
